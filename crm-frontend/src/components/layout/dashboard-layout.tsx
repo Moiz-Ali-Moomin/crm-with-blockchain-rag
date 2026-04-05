@@ -1,0 +1,49 @@
+'use client';
+
+import { useState } from 'react';
+import { Sidebar } from './sidebar';
+import { Navbar } from './header';
+
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+}
+
+/**
+ * DashboardLayout — the glass shell wrapping all authenticated pages.
+ *
+ * Structure:
+ *   ┌─────────────┬────────────────────────────┐
+ *   │             │  Navbar (glass-navbar)      │
+ *   │  Sidebar    ├────────────────────────────┤
+ *   │  (glass)    │  <main> — page content     │
+ *   │             │                            │
+ *   └─────────────┴────────────────────────────┘
+ *
+ * The gradient background is set on <body> in globals.css so it bleeds
+ * through both the sidebar and content area uniformly.
+ */
+export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((o) => !o)} />
+
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
+
+        {/* Page content area */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Inner padding + max-width constraint */}
+          <div className="px-6 py-6 max-w-[1600px] mx-auto w-full">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// Re-export Navbar as named export so existing `import { Header }` still resolves
+// if any file imported it under that name — prevents breaking other pages.
+export { Navbar as Header };

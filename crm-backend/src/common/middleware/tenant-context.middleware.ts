@@ -1,0 +1,77 @@
+/**
+ * Tenant Context Middleware
+ *
+ * CRITICAL: Extracts tenantId from the validated JWT and stores it in
+ * AsyncLocalStorage. This enables the PrismaService middleware to automatically
+ * inject tenant scoping into every database query without requiring explicit
+ * tenantId parameters in every repository call.
+ *
+ * AsyncLocalStorage is Node's native way to maintain request-scoped state
+ * without prop-drilling through the entire call stack.
+ */
+
+import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { AsyncLocalStorage } from 'async_hooks';
+import type { TenantContext, JwtPayload } from '../../shared/types/tenant.types';
+
+export type { TenantContext };
+
+// Singleton AsyncLocalStorage - shared across the entire process
+export const tenantContext = new AsyncLocalStorage<TenantContext>();
+
+@Injectable()
+export class TenantContextMiddleware implements NestMiddleware {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
+  ) {}
+
+  use(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      // Some endpoints are public - let the JwtAuthGuard handle the rejection
+      return tenantContext.run({ tenantId: '' }, next);
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+      const payload = this.jwtService.verify<JwtPayload>(
+        token,
+        { secret: this.config.get<string>('JWT_SECRET') },
+      );
+
+      if (!payload.tenantId) {
+        throw new UnauthorizedException('Token missing tenant context');
+      }
+
+      // Store in AsyncLocalStorage - automatically propagates through async calls
+      tenantContext.run(
+        {
+          tenantId: payload.tenantId,
+          userId: payload.sub,
+        },
+        next,
+      );
+    } catch {
+      // Invalid tokens are handled by the JWT guard downstream
+      tenantContext.run({ tenantId: '' }, next);
+    }
+  }
+}
+
+/**
+ * Helper to get current tenant context outside of middleware
+ * Returns null if called outside of a request context
+ */
+export function getCurrentTenantId(): string | null {
+  return tenantContext.getStore()?.tenantId ?? null;
+}
+
+export function getCurrentUserId(): string | null {
+  return tenantContext.getStore()?.userId ?? null;
+}

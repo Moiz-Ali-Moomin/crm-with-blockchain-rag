@@ -70,15 +70,17 @@ export class DealsService {
     });
 
     // Group deals by stage
-    const columns = stages.map((stage) => ({
-      stage,
-      deals: deals.filter((d) => d.stageId === stage.id),
-      totalValue: deals
-        .filter((d) => d.stageId === stage.id)
-        .reduce((sum, d) => sum + Number(d.value), 0),
-    }));
+    const stages_result = stages.map((stage) => {
+      const stageDeals = deals.filter((d) => d.stageId === stage.id);
+      return {
+        stage,
+        deals: stageDeals,
+        count: stageDeals.length,
+        totalValue: stageDeals.reduce((sum, d) => sum + Number(d.value), 0),
+      };
+    });
 
-    return { pipelineId, columns };
+    return { pipelineId, stages: stages_result };
   }
 
   /**

@@ -11,6 +11,6 @@ import { QUEUE_NAMES } from '../../core/queue/queue.constants';
   ],
   controllers: [BlockchainController],
   providers: [BlockchainService, BlockchainRepository],
-  exports: [BlockchainService, BullModule],
+  exports: [BlockchainService, BlockchainRepository, BullModule],
 })
 export class BlockchainModule {}

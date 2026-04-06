@@ -28,7 +28,7 @@ export class BillingRepository {
   }
 
   async findByPayPalSubscriptionId(paypalSubscriptionId: string) {
-    return this.prisma.billingInfo.findUnique({ where: { paypalSubscriptionId } });
+    return this.prisma.billingInfo.findUnique({ where: { paypalSubscriptionId } as any });
   }
 
   async update(tenantId: string, data: {
@@ -50,6 +50,7 @@ export class BillingRepository {
   async upsert(tenantId: string, data: {
     stripeCustomerId?: string;
     stripeSubscriptionId?: string | null;
+    paypalSubscriptionId?: string | null;
     plan?: string;
     status?: string;
     currentPeriodEnd?: Date | null;
@@ -61,9 +62,9 @@ export class BillingRepository {
         tenantId,
         plan: data.plan ?? 'FREE',
         status: data.status ?? 'ACTIVE',
-        ...data,
+        ...(data as any),
       },
-      update: data,
+      update: data as any,
     });
   }
 }

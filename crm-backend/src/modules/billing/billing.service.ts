@@ -477,7 +477,7 @@ export class BillingService {
     const priceId = subscription.items.data[0]?.price?.id;
     if (!priceId) return 'free';
 
-    const entry = Object.entries(PLAN_PRICE_MAP).find(([, id]) => id === priceId);
+    const entry = Object.entries(STRIPE_PLAN_PRICE_MAP).find(([, id]) => id === priceId);
     return entry ? entry[0] : 'pro';
   }
 }

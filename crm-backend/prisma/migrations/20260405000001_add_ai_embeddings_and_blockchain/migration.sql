@@ -57,7 +57,7 @@ ALTER TABLE "ai_embeddings"
 -- CONCURRENTLY avoids locking the table during index build (safe for production).
 -- NOTE: IVFFlat requires at least one row to exist before indexing.
 --       The index will be created but not trained until data is inserted.
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "ai_embeddings_embedding_idx"
+CREATE INDEX IF NOT EXISTS "ai_embeddings_embedding_idx"
     ON "ai_embeddings" USING ivfflat ("embedding" vector_cosine_ops)
     WITH (lists = 100);
 

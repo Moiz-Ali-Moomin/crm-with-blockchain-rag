@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.git
+.github
+.next
+*.log
+.env
+.env.*
+tmp
+temp
+debugging-log.html

@@ -134,8 +134,8 @@ jobs:
             on_error() {
               echo "[ERROR] Deployment failed on line $1"
               if [ -f "${DEPLOY_PATH}/docker-compose.prod.yml" ]; then
-                docker compose -f "${DEPLOY_PATH}/docker-compose.prod.yml" ps || true
-                docker compose -f "${DEPLOY_PATH}/docker-compose.prod.yml" logs --tail=100 api web nginx || true
+                docker compose --env-file "${DEPLOY_PATH}/.env" -f "${DEPLOY_PATH}/docker-compose.prod.yml" ps || true
+                docker compose --env-file "${DEPLOY_PATH}/.env" -f "${DEPLOY_PATH}/docker-compose.prod.yml" logs --tail=100 api web nginx || true
               fi
             }
 
@@ -177,13 +177,19 @@ jobs:
             git pull --ff-only origin "${DEPLOY_BRANCH}"
             git checkout --force "${DEPLOY_SHA}"
 
+            echo "[INFO] Stopping old containers..."
+            docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down --remove-orphans || true
+
+            echo "[INFO] Cleaning known container conflicts..."
+            docker rm -f crm_api crm_web crm_nginx crm_postgres crm_redis crm_mongodb crm_certbot 2>/dev/null || true
+
             echo "[INFO] Building and starting containers"
             docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" build --pull api web
-            docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans postgres redis mongodb api web nginx
+            docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d postgres redis mongodb api web nginx
 
             echo "[INFO] Waiting for API health check"
             for attempt in $(seq 1 24); do
-              if curl --fail --silent --show-error "${API_HEALTH_URL}" > /dev/null; then
+              if curl --fail --silent "${API_HEALTH_URL}" > /dev/null; then
                 echo "[INFO] API is healthy"
                 break
               fi

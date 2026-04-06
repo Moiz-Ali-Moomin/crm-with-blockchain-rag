@@ -60,6 +60,57 @@ jobs:
           test -n "${API_HEALTH_URL}" || { echo "::error::Missing PRODUCTION_API_HEALTH_URL"; exit 1; }
           test -n "${REPO_URL}" || { echo "::error::Missing repository URL"; exit 1; }
 
+      - name: Create .env on server
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          BLOCKCHAIN_PRIVATE_KEY: ${{ secrets.BLOCKCHAIN_PRIVATE_KEY }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+          script_stop: true
+          envs: DEPLOY_PATH,POSTGRES_PASSWORD,REDIS_PASSWORD,MONGO_PASSWORD,JWT_SECRET,JWT_REFRESH_SECRET,SENDGRID_API_KEY,STRIPE_SECRET_KEY,OPENAI_API_KEY,BLOCKCHAIN_PRIVATE_KEY
+          script: |
+            set -Eeuo pipefail
+
+            mkdir -p "${DEPLOY_PATH}"
+
+            cat <<EOF > "${DEPLOY_PATH}/.env"
+            NODE_ENV=production
+            PORT=3001
+
+            POSTGRES_USER=crm_user
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            POSTGRES_DB=crm_db
+
+            REDIS_PASSWORD=${REDIS_PASSWORD}
+
+            MONGO_USER=crm_mongo
+            MONGO_PASSWORD=${MONGO_PASSWORD}
+
+            JWT_SECRET=${JWT_SECRET}
+            JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+
+            SENDGRID_API_KEY=${SENDGRID_API_KEY}
+
+            STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+
+            OPENAI_API_KEY=${OPENAI_API_KEY}
+
+            BLOCKCHAIN_PRIVATE_KEY=${BLOCKCHAIN_PRIVATE_KEY}
+            EOF
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:

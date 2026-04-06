@@ -172,22 +172,23 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                       title={!open ? item.label : undefined}
                       className={cn(
                         'flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm font-medium',
-                        'transition-all duration-150 relative group',
+                        'transition-all duration-200 relative group',
                         isActive
-                          ? 'bg-violet-500/20 text-violet-300 border border-violet-400/20'
-                          : 'text-white/45 hover:bg-white/6 hover:text-white/90 border border-transparent',
+                          ? 'bg-violet-500/18 text-violet-200 border border-violet-400/30 nav-active-glow'
+                          : 'text-white/40 hover:bg-white/6 hover:text-white/85 border border-transparent hover:border-white/8',
                         !open && 'justify-center',
                       )}
                     >
-                      {/* Active indicator dot */}
+                      {/* Active indicator — left glow bar */}
                       {isActive && (
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-violet-400 rounded-r-full" />
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full"
+                          style={{ background: 'linear-gradient(180deg, #c4b5fd, #818cf8)' }} />
                       )}
 
                       <Icon
                         size={16}
                         strokeWidth={isActive ? 2.5 : 1.8}
-                        className="shrink-0"
+                        className={cn('shrink-0 transition-colors', isActive && 'drop-shadow-[0_0_6px_rgba(167,139,250,0.8)]')}
                       />
 
                       <AnimatePresence mode="wait">

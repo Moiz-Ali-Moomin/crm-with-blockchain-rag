@@ -45,8 +45,6 @@ services:
       context: ./crm-backend
     container_name: crm_api
     restart: unless-stopped
-    ports:
-      - "3001:3001"
     env_file:
       - ./.env
     environment:
@@ -67,12 +65,10 @@ services:
     build:
       context: ./crm-frontend
       args:
-        NEXT_PUBLIC_API_URL: http://bestpurchasestore.com/api/v1
-        NEXT_PUBLIC_APP_URL: http://bestpurchasestore.com
+        NEXT_PUBLIC_API_URL: https://bestpurchasestore.com/api/v1
+        NEXT_PUBLIC_APP_URL: https://bestpurchasestore.com
     container_name: crm_web
     restart: unless-stopped
-    ports:
-      - "3000:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -81,7 +77,7 @@ services:
     networks:
       - crm_public
 
-  # ── NGINX (IMPORTANT FIX) ─────────────────────────────────
+  # ── NGINX (FINAL FIX + SSL SUPPORT) ───────────────────────
 
   nginx:
     image: nginx:alpine
@@ -89,9 +85,10 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx:/etc/nginx
+      - /etc/nginx/ssl:/etc/nginx/ssl
     depends_on:
       - web
       - api

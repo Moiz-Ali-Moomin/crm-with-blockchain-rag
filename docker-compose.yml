@@ -67,8 +67,8 @@ services:
     build:
       context: ./crm-frontend
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3001
-        NEXT_PUBLIC_APP_URL: http://localhost:3000
+        NEXT_PUBLIC_API_URL: http://178.104.44.254:3001
+        NEXT_PUBLIC_APP_URL: http://178.104.44.254:3000
     container_name: crm_web
     restart: unless-stopped
     ports:

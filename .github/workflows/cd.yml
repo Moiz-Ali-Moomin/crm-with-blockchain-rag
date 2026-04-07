@@ -19,7 +19,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # 🔥 FIXED CONDITION (reliable trigger)
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (
@@ -37,18 +36,20 @@ jobs:
           script: |
             set -e
 
-            cd /root/your-project
+            echo "[INFO] Navigating to project..."
+            cd ${{ secrets.DEPLOY_PATH }}
 
             echo "[INFO] Pulling latest code..."
             git pull origin main
 
-            echo "[INFO] Rebuilding containers..."
-            docker compose -f docker-compose.prod.yml down
+            echo "[INFO] Stopping old containers..."
+            docker compose down
 
-            # 🔥 NO CACHE (IMPORTANT)
-            docker compose -f docker-compose.prod.yml build --no-cache
+            echo "[INFO] Building containers (no cache)..."
+            docker compose build --no-cache
 
-            docker compose -f docker-compose.prod.yml up -d
+            echo "[INFO] Starting containers..."
+            docker compose up -d
 
             echo "[INFO] Running containers:"
             docker ps

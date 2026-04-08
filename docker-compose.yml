@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: crm_mongo
-      MONGO_INITDB_ROOT_PASSWORD: strongpassword123
+      MONGO_INITDB_ROOT_PASSWORD: strongmongo123
     volumes:
       - mongo_data:/data/db
     networks:

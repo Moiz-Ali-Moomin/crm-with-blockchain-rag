@@ -1,8 +1,6 @@
 version: '3.9'
 
 services:
-  # ── Infrastructure ─────────────────────────────────────────
-
   postgres:
     image: pgvector/pgvector:pg16
     container_name: crm_postgres
@@ -38,8 +36,6 @@ services:
     networks:
       - crm_internal
 
-  # ── Backend API ───────────────────────────────────────────
-
   api:
     build:
       context: ./crm-backend
@@ -58,8 +54,12 @@ services:
     networks:
       - crm_internal
       - crm_public
-
-  # ── Frontend ───────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   web:
     build:
@@ -77,8 +77,6 @@ services:
     networks:
       - crm_public
 
-  # ── NGINX (FINAL FIX + SSL SUPPORT) ───────────────────────
-
   nginx:
     image: nginx:alpine
     container_name: crm_nginx
@@ -95,14 +93,10 @@ services:
     networks:
       - crm_public
 
-# ── Volumes ────────────────────────────────────────────────
-
 volumes:
   postgres_data:
   redis_data:
   mongo_data:
-
-# ── Networks ───────────────────────────────────────────────
 
 networks:
   crm_internal:

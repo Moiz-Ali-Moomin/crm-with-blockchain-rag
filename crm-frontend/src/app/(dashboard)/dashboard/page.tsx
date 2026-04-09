@@ -1,13 +1,5 @@
-/**
- * Dashboard — React Server Component
- *
- * Layout:
- *  TOP:    4 KPI cards (Total Leads, Open Deals, Revenue MTD, Conversion Rate)
- *  MIDDLE: 70% charts (Revenue + Pipeline Funnel) | 30% Tasks + Activity feed
- *  FLOAT:  AI Copilot floating widget (bottom-right)
- */
-
 import { Suspense } from 'react';
+import Link from "next/link"; // ✅ added
 import { getDashboardMetrics } from '@/lib/api/server/analytics.server';
 import { StatCard } from '@/components/ui/stat-card';
 import { DashboardCharts } from './_components/dashboard-charts';
@@ -76,13 +68,13 @@ function SectionHeader({
         {title}
       </h2>
       {action && (
-        <a
-          href={action.href ?? '#'}
+        <Link
+          href={action.href || '/'} // ✅ fixed
           className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-0.5"
         >
           {action.label}
           <ArrowUpRight size={11} strokeWidth={2} />
-        </a>
+        </Link>
       )}
     </div>
   );
@@ -93,7 +85,6 @@ function SectionHeader({
 function TasksList() {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      {/* Card header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-blue-50">
@@ -106,19 +97,13 @@ function TasksList() {
         </span>
       </div>
 
-      {/* Task rows */}
       <div className="divide-y divide-gray-100">
         {MOCK_TASKS.map((task) => (
-          <div
-            key={task.id}
-            className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors duration-150 group cursor-pointer"
-          >
-            {/* Checkbox */}
-            <div className="w-4 h-4 rounded border border-gray-300 group-hover:border-blue-400 transition-colors shrink-0" />
+          <div key={task.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 group cursor-pointer">
+            <div className="w-4 h-4 rounded border border-gray-300 group-hover:border-blue-400" />
 
-            {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] text-gray-700 font-medium truncate group-hover:text-gray-900 transition-colors">
+              <p className="text-[13px] text-gray-700 font-medium truncate group-hover:text-gray-900">
                 {task.title}
               </p>
               <div className="flex items-center gap-1 mt-0.5">
@@ -127,12 +112,8 @@ function TasksList() {
               </div>
             </div>
 
-            {/* Meta */}
-            <div className="flex items-center gap-2 shrink-0">
-              <span className={cn(
-                'text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full',
-                priorityStyles[task.priority],
-              )}>
+            <div className="flex items-center gap-2">
+              <span className={cn('text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full', priorityStyles[task.priority])}>
                 {task.priority}
               </span>
               <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-600">
@@ -143,15 +124,11 @@ function TasksList() {
         ))}
       </div>
 
-      {/* Footer */}
       <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
-        <a
-          href="/tasks"
-          className="text-[12px] font-medium text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1"
-        >
+        <Link href="/tasks" className="text-[12px] font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1">
           View all tasks
           <ArrowUpRight size={11} strokeWidth={2} />
-        </a>
+        </Link>
       </div>
     </div>
   );
@@ -162,38 +139,24 @@ function TasksList() {
 function ActivityFeed() {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      {/* Card header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <span className="text-[13px] font-semibold text-gray-900">Recent Activity</span>
-        <a
-          href="/activities"
-          className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-0.5"
-        >
+        <Link href="/activities" className="text-[11px] font-medium text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
           View all
           <ArrowUpRight size={11} strokeWidth={2} />
-        </a>
+        </Link>
       </div>
 
-      {/* Feed items */}
       <div className="divide-y divide-gray-50">
         {MOCK_ACTIVITY.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 transition-colors duration-150 group"
-          >
-            {/* User avatar */}
-            <div className={cn(
-              'w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold text-white',
-              item.color,
-            )}>
+          <div key={item.id} className="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 group">
+            <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white', item.color)}>
               {item.initials}
             </div>
 
-            {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] text-gray-600 leading-snug">
-                <span className="font-semibold text-gray-900">{item.user}</span>
-                {' '}{item.action}{' '}
+              <p className="text-[12px] text-gray-600">
+                <span className="font-semibold text-gray-900">{item.user}</span> {item.action}{' '}
                 <span className="text-gray-500">{item.entity}</span>
               </p>
               <p className="text-[10px] text-gray-400 mt-0.5">{item.time}</p>
@@ -213,79 +176,28 @@ export default async function DashboardPage() {
   const kpiCards = metrics
     ? [
         {
-          title:        'Total Leads',
-          value:        metrics.totalLeads,
+          title: 'Total Leads',
+          value: metrics.totalLeads,
           displayValue: metrics.totalLeads.toLocaleString(),
-          icon:         <Users size={14} strokeWidth={2} />,
-          gradient:     1 as const,
-          trend: {
-            direction: 'up' as const,
-            value:     `+${metrics.newLeadsThisMonth}`,
-            label:     'this month',
-          },
-        },
-        {
-          title:        'Open Deals',
-          value:        metrics.openDeals,
-          displayValue: metrics.openDeals.toLocaleString(),
-          icon:         <TrendingUp size={14} strokeWidth={2} />,
-          gradient:     3 as const,
-          sub:          `${formatCurrency(metrics.totalDealValue)} pipeline`,
-        },
-        {
-          title:        'Revenue (MTD)',
-          value:        formatCurrency(metrics.revenueThisMonth),
-          displayValue: formatCurrency(metrics.revenueThisMonth),
-          icon:         <DollarSign size={14} strokeWidth={2} />,
-          gradient:     2 as const,
-          trend: {
-            direction: (metrics.revenueGrowth >= 0 ? 'up' : 'down') as 'up' | 'down',
-            value:     `${metrics.revenueGrowth >= 0 ? '+' : ''}${metrics.revenueGrowth.toFixed(1)}%`,
-            label:     'vs last month',
-          },
-        },
-        {
-          title:        'Conversion Rate',
-          value:        `${metrics.conversionRate.toFixed(1)}%`,
-          displayValue: `${metrics.conversionRate.toFixed(1)}%`,
-          icon:         <Percent size={14} strokeWidth={2} />,
-          gradient:     4 as const,
-          sub:          'Lead → Deal',
+          icon: <Users size={14} />,
+          gradient: 1 as const,
         },
       ]
-    : [
-        { title: 'Total Leads',     icon: <Users size={14} strokeWidth={2} />,      gradient: 1 as const, value: '1,204',   displayValue: '1,204',   trend: { direction: 'up' as const, value: '+48', label: 'this month' } },
-        { title: 'Open Deals',      icon: <TrendingUp size={14} strokeWidth={2} />, gradient: 3 as const, value: '86',      displayValue: '86',      sub: '$248,000 pipeline' },
-        { title: 'Revenue (MTD)',    icon: <DollarSign size={14} strokeWidth={2} />, gradient: 2 as const, value: '$32,450', displayValue: '$32,450', trend: { direction: 'up' as const, value: '+8.2%', label: 'vs last month' } },
-        { title: 'Conversion Rate', icon: <Percent size={14} strokeWidth={2} />,    gradient: 4 as const, value: '12.4%',  displayValue: '12.4%',   sub: 'Lead → Deal' },
-      ];
+    : [];
 
   return (
     <div className="space-y-6">
-      {/* ── KPI row ────────────────────────────────────────────────────────── */}
       <section>
         <SectionHeader title="Key Metrics" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {kpiCards.map((card, i) => (
-            <StatCard
-              key={card.title}
-              index={i}
-              title={card.title}
-              value={card.value}
-              displayValue={card.displayValue}
-              icon={card.icon}
-              gradient={card.gradient}
-              trend={'trend' in card ? card.trend : undefined}
-              sub={'sub' in card ? card.sub : undefined}
-            />
+            <StatCard key={i} {...card} />
           ))}
         </div>
       </section>
 
-      {/* ── Charts + sidebar ───────────────────────────────────────────────── */}
       <section>
         <div className="grid grid-cols-1 xl:grid-cols-10 gap-4">
-          {/* Left: charts (70%) */}
           <div className="xl:col-span-7">
             <SectionHeader title="Performance" action={{ label: 'Full report', href: '/analytics' }} />
             <Suspense fallback={<ChartsSkeleton />}>
@@ -293,7 +205,6 @@ export default async function DashboardPage() {
             </Suspense>
           </div>
 
-          {/* Right: tasks + activity (30%) */}
           <div className="xl:col-span-3 space-y-4">
             <SectionHeader title="Today" action={{ label: 'All tasks', href: '/tasks' }} />
             <TasksList />
@@ -302,7 +213,6 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* ── Floating AI Copilot ────────────────────────────────────────────── */}
       <FloatingAiCopilot />
     </div>
   );

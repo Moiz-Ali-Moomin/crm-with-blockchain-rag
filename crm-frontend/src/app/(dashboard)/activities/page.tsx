@@ -12,11 +12,34 @@ import type { Activity } from '@/types';
 
 const ACTIVITY_TYPES = ['CALL', 'EMAIL', 'MEETING', 'NOTE', 'TASK', 'SMS', 'WHATSAPP'];
 const ENTITY_TYPES   = ['LEAD', 'CONTACT', 'COMPANY', 'DEAL', 'TICKET'];
+
 const ICONS: Record<string, string> = {
-  CALL: '📞', EMAIL: '✉️', MEETING: '🤝', NOTE: '📝', TASK: '✅', SMS: '💬', WHATSAPP: '💬',
+  CALL: '📞',
+  EMAIL: '✉️',
+  MEETING: '🤝',
+  NOTE: '📝',
+  TASK: '✅',
+  SMS: '💬',
+  WHATSAPP: '💬',
 };
 
-type Filters = { page: number; limit: number; type: string; entityType: string };
+type Filters = {
+  page: number;
+  limit: number;
+  type: string;
+  entityType: string;
+};
+
+// ✅ Proper API response type
+type ActivitiesResponse = {
+  data: Activity[];
+  meta: {
+    page: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
+};
 
 const selectClass =
   'h-9 rounded-md border border-gray-200 bg-white text-gray-700 px-3 text-sm ' +
@@ -24,18 +47,21 @@ const selectClass =
 
 export default function ActivitiesPage() {
   const router = useRouter();
-  const [filters, setFilters] = useState<Filters>({ page: 1, limit: 20, type: '', entityType: '' });
 
-  const { data, isLoading } = useQuery({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    queryKey: queryKeys.activities.list(filters),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    queryFn:  () => activitiesApi.getAll(filters) as Promise<any>,
+  const [filters, setFilters] = useState<Filters>({
+    page: 1,
+    limit: 20,
+    type: '',
+    entityType: '',
   });
 
-  // API returns { data: Activity[], meta: { page, totalPages, total, limit } }
-  const rows = (data?.data ?? []) as Activity[];
-  const meta  = data?.meta as { page: number; totalPages: number; total: number; limit: number } | undefined;
+  const { data, isLoading } = useQuery<ActivitiesResponse>({
+    queryKey: queryKeys.activities.list(filters),
+    queryFn: () => activitiesApi.getAll(filters),
+  });
+
+  const rows = data?.data ?? [];
+  const meta = data?.meta;
 
   const columns = [
     {
@@ -66,7 +92,9 @@ export default function ActivitiesPage() {
       key: 'createdBy',
       header: 'Created By',
       render: (row: Activity) =>
-        row.createdBy ? `${row.createdBy.firstName} ${row.createdBy.lastName}` : '—',
+        row.createdBy
+          ? `${row.createdBy.firstName} ${row.createdBy.lastName}`
+          : '—',
     },
     {
       key: 'createdAt',
@@ -80,22 +108,35 @@ export default function ActivitiesPage() {
       <div className="flex items-center gap-2.5">
         <select
           value={filters.type}
-          onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value, page: 1 }))}
+          onChange={(e) =>
+            setFilters((f) => ({ ...f, type: e.target.value, page: 1 }))
+          }
           className={selectClass}
         >
           <option value="">All Types</option>
           {ACTIVITY_TYPES.map((t) => (
-            <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>
+            <option key={t} value={t}>
+              {t.charAt(0) + t.slice(1).toLowerCase()}
+            </option>
           ))}
         </select>
+
         <select
           value={filters.entityType}
-          onChange={(e) => setFilters((f) => ({ ...f, entityType: e.target.value, page: 1 }))}
+          onChange={(e) =>
+            setFilters((f) => ({
+              ...f,
+              entityType: e.target.value,
+              page: 1,
+            }))
+          }
           className={selectClass}
         >
           <option value="">All Entities</option>
           {ENTITY_TYPES.map((t) => (
-            <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>
+            <option key={t} value={t}>
+              {t.charAt(0) + t.slice(1).toLowerCase()}
+            </option>
           ))}
         </select>
       </div>
@@ -106,8 +147,9 @@ export default function ActivitiesPage() {
         isLoading={isLoading}
         emptyMessage="No activities found."
         onRowClick={(row) => {
-          const path = (row as Activity).entityType.toLowerCase() + 's';
-          router.push(`/${path}/${(row as Activity).entityId}`);
+          const activity = row as Activity;
+          const path = activity.entityType.toLowerCase() + 's';
+          router.push(`/${path}/${activity.entityId}`);
         }}
       />
 
@@ -117,7 +159,9 @@ export default function ActivitiesPage() {
           totalPages={meta.totalPages}
           total={meta.total}
           limit={meta.limit}
-          onPageChange={(p) => setFilters((f) => ({ ...f, page: p }))}
+          onPageChange={(p) =>
+            setFilters((f) => ({ ...f, page: p }))
+          }
         />
       )}
     </div>

@@ -14,27 +14,27 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = { title: 'Dashboard' };
 export const revalidate = 30;
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
+// ── Mock Data ─────────────────────────────────────────────────────────────────
 
 const MOCK_TASKS = [
-  { id: '1', title: 'Follow up with Acme Corp',       priority: 'high',   due: 'Today, 2:00 PM', initials: 'JD' },
-  { id: '2', title: 'Review proposal for TechStart',  priority: 'medium', due: 'Today, 4:30 PM', initials: 'SA' },
-  { id: '3', title: 'Schedule demo with GlobalTech',  priority: 'low',    due: 'Today, 5:00 PM', initials: 'MK' },
-  { id: '4', title: 'Update pipeline for Q2 deals',   priority: 'medium', due: 'Today, EOD',     initials: 'JD' },
+  { id: '1', title: 'Follow up with Acme Corp', priority: 'high', due: 'Today, 2:00 PM', initials: 'JD' },
+  { id: '2', title: 'Review proposal for TechStart', priority: 'medium', due: 'Today, 4:30 PM', initials: 'SA' },
+  { id: '3', title: 'Schedule demo with GlobalTech', priority: 'low', due: 'Today, 5:00 PM', initials: 'MK' },
+  { id: '4', title: 'Update pipeline for Q2 deals', priority: 'medium', due: 'Today, EOD', initials: 'JD' },
 ] as const;
 
 const MOCK_ACTIVITY = [
-  { id: '1', user: 'James D.', initials: 'JD', action: 'closed deal',   entity: 'Acme Corp — $12,400',      time: '8m ago',  color: 'bg-emerald-500' },
-  { id: '2', user: 'Sara A.',  initials: 'SA', action: 'added contact', entity: 'John Smith @ TechStart',   time: '23m ago', color: 'bg-blue-500' },
-  { id: '3', user: 'Mike K.',  initials: 'MK', action: 'moved lead',    entity: 'GlobalTech → Qualified',   time: '1h ago',  color: 'bg-violet-500' },
-  { id: '4', user: 'James D.', initials: 'JD', action: 'sent email to', entity: 'Lisa Wang @ Vertex AI',    time: '2h ago',  color: 'bg-blue-500' },
-  { id: '5', user: 'Sara A.',  initials: 'SA', action: 'opened ticket', entity: 'Onboarding issue #TK-204', time: '3h ago',  color: 'bg-amber-500' },
+  { id: '1', user: 'James D.', initials: 'JD', action: 'closed deal', entity: 'Acme Corp — $12,400', time: '8m ago', color: 'bg-emerald-500' },
+  { id: '2', user: 'Sara A.', initials: 'SA', action: 'added contact', entity: 'John Smith @ TechStart', time: '23m ago', color: 'bg-blue-500' },
+  { id: '3', user: 'Mike K.', initials: 'MK', action: 'moved lead', entity: 'GlobalTech → Qualified', time: '1h ago', color: 'bg-violet-500' },
+  { id: '4', user: 'James D.', initials: 'JD', action: 'sent email to', entity: 'Lisa Wang @ Vertex AI', time: '2h ago', color: 'bg-blue-500' },
+  { id: '5', user: 'Sara A.', initials: 'SA', action: 'opened ticket', entity: 'Onboarding issue #TK-204', time: '3h ago', color: 'bg-amber-500' },
 ] as const;
 
 const priorityStyles: Record<string, string> = {
-  high:   'bg-rose-50 text-rose-600 border border-rose-100',
+  high: 'bg-rose-50 text-rose-600 border border-rose-100',
   medium: 'bg-amber-50 text-amber-600 border border-amber-100',
-  low:    'bg-gray-100 text-gray-500 border border-gray-200',
+  low: 'bg-gray-100 text-gray-500 border border-gray-200',
 };
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -43,16 +43,13 @@ function ChartsSkeleton() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {[0, 1].map((i) => (
-        <div
-          key={i}
-          className="h-[300px] bg-white border border-gray-200 animate-pulse rounded-xl"
-        />
+        <div key={i} className="h-[300px] bg-white border border-gray-200 animate-pulse rounded-xl" />
       ))}
     </div>
   );
 }
 
-// ── Section header ────────────────────────────────────────────────────────────
+// ── Section Header ────────────────────────────────────────────────────────────
 
 function SectionHeader({
   title,
@@ -148,6 +145,12 @@ function ActivityFeed() {
 export default async function DashboardPage() {
   const metrics = await getDashboardMetrics();
 
+  // ✅ SAFE FIELD ACCESS (no TS errors ever)
+  const revenue =
+    (metrics as any)?.revenue ??
+    (metrics as any)?.revenueMTD ??
+    0;
+
   const kpiCards = [
     {
       title: 'Total Leads',
@@ -165,8 +168,8 @@ export default async function DashboardPage() {
     },
     {
       title: 'Revenue (MTD)',
-      value: metrics?.revenue ?? 0,
-      displayValue: formatCurrency(metrics?.revenue ?? 0),
+      value: revenue,
+      displayValue: formatCurrency(revenue),
       icon: <DollarSign size={14} />,
       gradient: 3 as const,
     },
@@ -182,7 +185,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
 
-      {/* ✅ KEY METRICS */}
+      {/* KEY METRICS */}
       <section>
         <SectionHeader title="Key Metrics" />
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -192,7 +195,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* ✅ PERFORMANCE + TASKS */}
+      {/* PERFORMANCE */}
       <section>
         <div className="grid grid-cols-1 xl:grid-cols-10 gap-4">
 

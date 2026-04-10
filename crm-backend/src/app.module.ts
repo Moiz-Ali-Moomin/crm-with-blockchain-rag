@@ -42,6 +42,9 @@ import { BillingModule } from './modules/billing/billing.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AiModule } from './modules/ai/ai.module';
 import { BlockchainModule } from './modules/blockchain/blockchain.module';
+import { WalletsModule } from './modules/wallets/wallets.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { LedgerModule } from './modules/ledger/ledger.module';
 import { JobsModule } from './jobs/jobs.module';
 import { HealthModule } from './health/health.module';
 
@@ -128,6 +131,11 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     AnalyticsModule,
     AiModule,
     BlockchainModule,
+
+    // ── Financial Rail ───────────────────────────────────────────────────────
+    WalletsModule,
+    PaymentsModule,
+    LedgerModule,
 
     // ── Background Jobs ──────────────────────────────────────────────────────
     JobsModule,

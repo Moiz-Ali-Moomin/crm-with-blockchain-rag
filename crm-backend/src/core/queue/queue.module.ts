@@ -35,6 +35,10 @@ import { QUEUE_NAMES } from './queue.constants';
     BullModule.registerQueue({ name: QUEUE_NAMES.WEBHOOK_OUTBOUND }),
     BullModule.registerQueue({ name: QUEUE_NAMES.REPORT }),
     BullModule.registerQueue({ name: QUEUE_NAMES.TASK_REMINDER }),
+    // ── Financial rail ───────────────────────────────────────────────────────
+    BullModule.registerQueue({ name: QUEUE_NAMES.PAYMENT_PROCESSING }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.BLOCKCHAIN_EVENTS }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.TRANSACTION_CONFIRMATION }),
   ],
   exports: [BullModule],
 })

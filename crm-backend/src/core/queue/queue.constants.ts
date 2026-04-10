@@ -14,6 +14,10 @@ export const QUEUE_NAMES = {
   TASK_REMINDER: 'task-reminder',
   AI_EMBEDDING: 'ai-embedding',
   BLOCKCHAIN: 'blockchain',
+  // ── Financial rail ──────────────────────────────────────────────────────
+  PAYMENT_PROCESSING: 'payment-processing',             // Payment intent lifecycle
+  BLOCKCHAIN_EVENTS: 'blockchain-events',               // Raw on-chain transfer events
+  TRANSACTION_CONFIRMATION: 'transaction-confirmation', // Confirmation count polling
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -58,12 +62,33 @@ export const QUEUE_JOB_OPTIONS = {
     removeOnFail: { count: 500 },
     priority: 10, // Lower number = higher priority in BullMQ; embedding is non-urgent
   },
-  // Blockchain: critical path — must eventually confirm on-chain
+  // Blockchain notarisation: critical path — must eventually confirm on-chain
   blockchain: {
     attempts: 6,
     backoff: { type: 'exponential' as const, delay: 10000 },
     removeOnComplete: { count: 100 },
-    removeOnFail: { count: 1000 }, // Keep failed for manual recovery
+    removeOnFail: { count: 1000 },
+  },
+  // Payment processing: financial critical path, highest retry budget
+  paymentProcessing: {
+    attempts: 8,
+    backoff: { type: 'exponential' as const, delay: 5000 },
+    removeOnComplete: { count: 200 },
+    removeOnFail: { count: 2000 }, // Keep all failures — financial audit trail
+  },
+  // Blockchain events: fired by listener, must not be lost
+  blockchainEvents: {
+    attempts: 5,
+    backoff: { type: 'exponential' as const, delay: 3000 },
+    removeOnComplete: { count: 500 },
+    removeOnFail: { count: 2000 },
+  },
+  // Confirmation polling: lower urgency, high volume
+  transactionConfirmation: {
+    attempts: 10,
+    backoff: { type: 'exponential' as const, delay: 15000 }, // ~15s base, max ~4min
+    removeOnComplete: { count: 500 },
+    removeOnFail: { count: 1000 },
   },
 } as const;
 

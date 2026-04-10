@@ -8,7 +8,7 @@
  * - Won/Lost handling with timestamps
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { NotFoundError, BusinessRuleError } from '../../shared/errors/domain.errors';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -18,25 +18,31 @@ import { WsService, WS_EVENTS } from '../../core/websocket/ws.service';
 import { QUEUE_NAMES, QUEUE_JOB_OPTIONS } from '../../core/queue/queue.constants';
 import { PrismaService } from '../../core/database/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { WalletsService } from '../wallets/wallets.service';
 import {
   CreateDealDto,
   UpdateDealDto,
   FilterDealDto,
   MoveDealStageDto,
 } from './deals.dto';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class DealsService {
+  private readonly logger = new Logger(DealsService.name);
+
   constructor(
     private readonly dealsRepo: DealsRepository,
     private readonly prisma: PrismaService,
     private readonly tx: PrismaTransactionService,
     private readonly ws: WsService,
     private readonly blockchainService: BlockchainService,
+    private readonly walletsService: WalletsService,
     @InjectQueue(QUEUE_NAMES.AUTOMATION) private readonly automationQueue: Queue,
     @InjectQueue(QUEUE_NAMES.NOTIFICATION) private readonly notificationQueue: Queue,
     @InjectQueue(QUEUE_NAMES.WEBHOOK_OUTBOUND) private readonly webhookQueue: Queue,
     @InjectQueue(QUEUE_NAMES.BLOCKCHAIN) private readonly blockchainQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.PAYMENT_PROCESSING) private readonly paymentQueue: Queue,
   ) {}
 
   async findAll(filters: FilterDealDto) {
@@ -304,6 +310,50 @@ export class DealsService {
         },
         QUEUE_JOB_OPTIONS.blockchain,
       );
+
+      // ── Payment Intent: if deal has a USDC value, create a payment intent ──
+      // This triggers the full stablecoin payment flow:
+      //   PaymentProcessingWorker → BlockchainListenerService (detects deposit)
+      //   → BlockchainEventsWorker → TransactionConfirmationWorker → COMPLETED + ledger
+      if (updatedDeal.currency === 'USDC' && updatedDeal.value.gt(0)) {
+        try {
+          const wallet = await this.walletsService.findByTenant(tenantId)
+            .then((wallets) => wallets.find((w) => w.type === 'TENANT' && w.chain === 'POLYGON'));
+
+          if (wallet) {
+            await this.paymentQueue.add(
+              'create_intent',
+              {
+                tenantId,
+                walletId: wallet.id,
+                amountUsdc: updatedDeal.value.toString(),
+                chain: 'POLYGON',
+                // Deterministic idempotency key: same deal won can only create one payment
+                idempotencyKey: `deal-won:${id}`,
+                dealId: id,
+                metadata: {
+                  dealTitle: updatedDeal.title,
+                  wonAt: updatedDeal.wonAt?.toISOString(),
+                },
+              },
+              {
+                ...QUEUE_JOB_OPTIONS.paymentProcessing,
+                jobId: `payment-intent:deal:${id}`, // BullMQ deduplicates
+              },
+            );
+            this.logger.log(`Payment intent queued for deal WON: ${id}`);
+          } else {
+            this.logger.warn(
+              `Deal ${id} won with USDC value but no TENANT wallet on POLYGON — ` +
+              `provision a wallet to enable payment collection`,
+            );
+          }
+        } catch (err) {
+          // Non-fatal: payment intent failure must not roll back the deal WON transition
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.error(`Failed to queue payment intent for deal ${id}: ${msg}`);
+        }
+      }
     }
 
     return updatedDeal;

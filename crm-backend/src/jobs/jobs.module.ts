@@ -4,6 +4,12 @@
  * because workers consume jobs while queues are used to produce jobs.
  */
 
+/**
+ * Jobs Module - Registers all BullMQ workers
+ * Workers are separate from queue registration (in CoreModule/QueueModule)
+ * because workers consume jobs while queues are used to produce jobs.
+ */
+
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { EmailWorker } from './workers/email.worker';
@@ -13,9 +19,15 @@ import { WebhookWorker } from './workers/webhook.worker';
 import { SmsWorker } from './workers/sms.worker';
 import { AiEmbeddingWorker } from './workers/ai-embedding.worker';
 import { BlockchainWorker } from './workers/blockchain.worker';
+// Financial rail
+import { PaymentProcessingWorker } from './workers/payment-processing.worker';
+import { BlockchainEventsWorker } from './workers/blockchain-events.worker';
+import { TransactionConfirmationWorker } from './workers/transaction-confirmation.worker';
 import { AutomationModule } from '../modules/automation/automation.module';
 import { AiModule } from '../modules/ai/ai.module';
 import { BlockchainModule } from '../modules/blockchain/blockchain.module';
+import { PaymentsModule } from '../modules/payments/payments.module';
+import { WalletsModule } from '../modules/wallets/wallets.module';
 import { QUEUE_NAMES } from '../core/queue/queue.constants';
 
 @Module({
@@ -28,12 +40,19 @@ import { QUEUE_NAMES } from '../core/queue/queue.constants';
       { name: QUEUE_NAMES.SMS },
       { name: QUEUE_NAMES.AI_EMBEDDING },
       { name: QUEUE_NAMES.BLOCKCHAIN },
+      // Financial rail
+      { name: QUEUE_NAMES.PAYMENT_PROCESSING },
+      { name: QUEUE_NAMES.BLOCKCHAIN_EVENTS },
+      { name: QUEUE_NAMES.TRANSACTION_CONFIRMATION },
     ),
     AutomationModule,
     AiModule,
     BlockchainModule,
+    PaymentsModule,
+    WalletsModule,
   ],
   providers: [
+    // Existing workers
     EmailWorker,
     NotificationWorker,
     AutomationWorker,
@@ -41,6 +60,10 @@ import { QUEUE_NAMES } from '../core/queue/queue.constants';
     SmsWorker,
     AiEmbeddingWorker,
     BlockchainWorker,
+    // Financial rail workers
+    PaymentProcessingWorker,
+    BlockchainEventsWorker,
+    TransactionConfirmationWorker,
   ],
 })
 export class JobsModule {}

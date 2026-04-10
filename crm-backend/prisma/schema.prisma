@@ -208,6 +208,13 @@ model Tenant {
   auditLogs      AuditLog[]
   billingInfo    BillingInfo?
 
+  // Financial
+  wallets              Wallet[]
+  payments             Payment[]
+  ledgerAccounts       LedgerAccount[]
+  ledgerEntries        LedgerEntry[]
+  blockchainTransactions BlockchainTransaction[]
+
   @@index([slug])
   @@map("tenants")
 }
@@ -254,6 +261,7 @@ model User {
   notifications    Notification[]
   auditLogs        AuditLog[]
   refreshSessions  RefreshSession[]
+  wallets          Wallet[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -460,6 +468,7 @@ model Deal {
   company       Company?   @relation(fields: [companyId], references: [id])
   owner         User?      @relation("DealOwner", fields: [ownerId], references: [id])
   stageHistory  DealStageHistory[]
+  payments      Payment[]
 
   @@index([tenantId])
   @@index([tenantId, pipelineId, stageId])
@@ -887,6 +896,277 @@ model BlockchainRecord {
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("blockchain_records")
+}
+
+// ════════════════════════════════════════════════════════════
+// FINANCIAL PRIMITIVES — Stablecoin payment rail
+// ════════════════════════════════════════════════════════════
+
+enum WalletType {
+  TENANT    // Tenant-level operating wallet
+  USER      // User-level custodial wallet
+  TREASURY  // Platform treasury (fee collection)
+  ESCROW    // Deal-scoped escrow
+}
+
+enum WalletStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum Chain {
+  POLYGON
+  BASE
+  ETHEREUM
+}
+
+enum PaymentStatus {
+  PENDING      // Intent created, awaiting deposit
+  CONFIRMING   // Tx seen on-chain, accumulating confirmations
+  COMPLETED    // N confirmations reached, ledger settled
+  FAILED       // Terminal failure
+  REFUNDED     // Funds returned to sender
+  EXPIRED      // Deposit window closed with no tx
+}
+
+enum PaymentDirection {
+  INBOUND   // Receiving USDC
+  OUTBOUND  // Sending USDC (withdrawal/payout)
+}
+
+enum LedgerAccountType {
+  ASSET       // Money we hold
+  LIABILITY   // Money we owe to users
+  REVENUE     // Platform fee income
+  EXPENSE     // Operational costs
+}
+
+enum BlockchainTxStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  FAILED
+  DROPPED
+}
+
+// ─── Wallet ──────────────────────────────────────────────────────────────────
+
+model Wallet {
+  id              String       @id @default(uuid())
+  tenantId        String
+  userId          String?
+  type            WalletType
+  status          WalletStatus @default(ACTIVE)
+  chain           Chain        @default(POLYGON)
+
+  // EVM-checksummed address
+  address         String
+
+  // Custody provider reference — we never store private keys
+  custodyId       String?      // e.g. Fireblocks vault account ID
+  custodyProvider String       @default("local") // "fireblocks" | "local"
+
+  // Off-chain balance cache — authoritative source is on-chain
+  balanceUsdc     Decimal      @default(0) @db.Decimal(36, 6)
+  balanceSyncedAt DateTime?
+
+  label           String?
+  metadata        Json?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  user            User?         @relation(fields: [userId], references: [id])
+  payments        Payment[]
+  ledgerAccount   LedgerAccount?
+
+  @@unique([chain, address])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, status])
+  @@map("wallets")
+}
+
+// ─── Payment ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id             String           @id @default(uuid())
+  tenantId       String
+
+  // Caller-provided, server-enforced deduplication key
+  idempotencyKey String           @unique
+
+  status         PaymentStatus    @default(PENDING)
+  direction      PaymentDirection
+
+  // USDC has 6 decimal places — store in smallest unit-compatible Decimal
+  amountUsdc     Decimal          @db.Decimal(36, 6)
+  feeUsdc        Decimal          @default(0) @db.Decimal(36, 6)
+  chain          Chain
+
+  // Wallet this payment is associated with (receiving or sending)
+  walletId       String
+  fromAddress    String?          // Populated by listener on INBOUND
+  toAddress      String           // Deposit address (INBOUND) or destination (OUTBOUND)
+
+  // Source entity linkage
+  dealId         String?
+
+  // On-chain settlement data
+  txHash         String?          @unique
+  blockNumber    BigInt?
+  confirmations  Int              @default(0)
+  requiredConfirmations Int       @default(3)
+
+  // Lifecycle timestamps
+  detectedAt     DateTime?        // First time tx seen by listener
+  confirmedAt    DateTime?
+  failedAt       DateTime?
+  expiresAt      DateTime         // INBOUND intents expire if no deposit arrives
+
+  failureReason  String?
+  metadata       Json?
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  wallet         Wallet           @relation(fields: [walletId], references: [id])
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  deal           Deal?            @relation(fields: [dealId], references: [id])
+  events         PaymentEvent[]
+  ledgerEntries  LedgerEntry[]
+  blockchainTxs  BlockchainTransaction[]
+
+  @@index([tenantId, status])
+  @@index([txHash])
+  @@index([dealId])
+  @@index([toAddress, status])     // Listener: match incoming tx to pending payment
+  @@index([tenantId, createdAt])
+  @@index([expiresAt, status])     // Expiry job sweep
+  @@map("payments")
+}
+
+// Immutable event log for each payment state transition
+model PaymentEvent {
+  id          String        @id @default(uuid())
+  paymentId   String
+  tenantId    String
+
+  fromStatus  PaymentStatus?
+  toStatus    PaymentStatus
+  event       String         // "tx_detected" | "confirmation_received" | "settled" | "expired"
+
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+
+  payment     Payment        @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId])
+  @@index([tenantId, createdAt])
+  @@map("payment_events")
+}
+
+// ─── Double-Entry Ledger ──────────────────────────────────────────────────────
+
+model LedgerAccount {
+  id        String            @id @default(uuid())
+  tenantId  String
+  walletId  String?           @unique
+  type      LedgerAccountType
+
+  name      String
+  code      String            // Chart of accounts: "1010" = USDC Asset, "4010" = Revenue
+  currency  String            @default("USDC")
+  chain     Chain?
+
+  // Maintained atomically by ledger service — never updated directly
+  balance   Decimal           @default(0) @db.Decimal(36, 6)
+
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  wallet        Wallet?       @relation(fields: [walletId], references: [id])
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  debitEntries  LedgerEntry[] @relation("DebitAccount")
+  creditEntries LedgerEntry[] @relation("CreditAccount")
+
+  @@unique([tenantId, code])
+  @@index([tenantId, type])
+  @@map("ledger_accounts")
+}
+
+// Each row = one balanced double-entry pair (debit + credit, same amount)
+model LedgerEntry {
+  id              String   @id @default(uuid())
+  tenantId        String
+
+  debitAccountId  String
+  creditAccountId String
+  amount          Decimal  @db.Decimal(36, 6)
+  currency        String   @default("USDC")
+
+  // Source linkage
+  paymentId       String?
+  referenceType   String?  // "payment" | "fee" | "refund" | "withdrawal"
+  referenceId     String?
+
+  description     String?
+  metadata        Json?
+
+  createdAt       DateTime @default(now())
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  payment       Payment?      @relation(fields: [paymentId], references: [id])
+  debitAccount  LedgerAccount @relation("DebitAccount", fields: [debitAccountId], references: [id])
+  creditAccount LedgerAccount @relation("CreditAccount", fields: [creditAccountId], references: [id])
+
+  @@index([paymentId])
+  @@index([tenantId, createdAt])
+  @@index([debitAccountId])
+  @@index([creditAccountId])
+  @@index([referenceType, referenceId])
+  @@map("ledger_entries")
+}
+
+// ─── Blockchain Transaction Registry ─────────────────────────────────────────
+
+model BlockchainTransaction {
+  id        String             @id @default(uuid())
+  tenantId  String
+  paymentId String?
+
+  txHash    String             @unique
+  chain     Chain
+  status    BlockchainTxStatus @default(PENDING)
+
+  fromAddress String
+  toAddress   String
+  // Raw USDC amount as string — BigInt safe (USDC 6 decimals)
+  amountRaw   String
+
+  blockNumber       BigInt?
+  gasUsed           String?
+  effectiveGasPrice String?
+
+  confirmations Int      @default(0)
+  firstSeenAt   DateTime @default(now())
+  confirmedAt   DateTime?
+
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId])
+  @@index([tenantId, status])
+  @@index([toAddress])
+  @@index([chain, blockNumber])
+  @@map("blockchain_transactions")
 }
 
 // ============================================================

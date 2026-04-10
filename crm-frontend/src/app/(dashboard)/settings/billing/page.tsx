@@ -404,7 +404,7 @@ export default function BillingPage() {
   });
 
   function handleCancel() {
-    if (!confirm('Cancel your subscription? You'll keep access until the current period ends.')) return;
+    if (!confirm("Cancel your subscription? You'll keep access until the current period ends.")) return;
     cancelMut.mutate();
   }
 

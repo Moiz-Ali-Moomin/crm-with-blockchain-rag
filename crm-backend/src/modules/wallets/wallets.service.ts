@@ -10,8 +10,9 @@
  * Multi-chain: create one Wallet per (tenantId, chain) combination.
  */
 
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { Chain, Wallet, WalletType } from '@prisma/client';
 import {
   CUSTODY_PROVIDER,
@@ -117,5 +118,82 @@ export class WalletsService {
   /** Used by the blockchain listener to match inbound deposits to wallets. */
   async findByAddress(address: string, chain: Chain): Promise<Wallet | null> {
     return this.walletsRepo.findByAddress(address, chain);
+  }
+
+  /**
+   * Submit an outbound USDC transfer from a custodial wallet.
+   *
+   * Validates:
+   *   1. Wallet is ACTIVE and belongs to this tenant
+   *   2. Off-chain balance cache covers the requested amount (guard — on-chain is authoritative)
+   *   3. Amount is positive
+   *
+   * Submits the transfer to the custody provider (Fireblocks or local dev wallet).
+   * Returns the custody provider's transaction result so the caller can track it.
+   *
+   * Note: the off-chain balance cache is NOT updated here — it will be refreshed
+   * by the next balance-sync cron cycle or an explicit GET /wallets/:id/balance call.
+   */
+  async withdraw(
+    walletId: string,
+    tenantId: string,
+    params: {
+      toAddress: string;
+      amountUsdc: string;
+      idempotencyKey: string;
+    },
+  ) {
+    const wallet = await this.findById(walletId, tenantId);
+
+    if (wallet.status !== 'ACTIVE') {
+      throw new BadRequestException(`Wallet ${walletId} is ${wallet.status} — cannot withdraw`);
+    }
+
+    const amountDecimal = new Prisma.Decimal(params.amountUsdc);
+    if (amountDecimal.lte(0)) {
+      throw new BadRequestException('Withdrawal amount must be greater than zero');
+    }
+
+    // Off-chain balance check (best-effort guard — on-chain is the source of truth)
+    if ((wallet.balanceUsdc as Prisma.Decimal).lt(amountDecimal)) {
+      throw new BadRequestException(
+        `Insufficient balance: ${wallet.balanceUsdc} USDC available, ` +
+        `${params.amountUsdc} USDC requested`,
+      );
+    }
+
+    if (!wallet.custodyId) {
+      throw new BadRequestException(`Wallet ${walletId} has no custody ID — cannot sign transfers`);
+    }
+
+    // Convert human amount (6 dp) → atomic units (raw integer string)
+    const amountRaw = amountDecimal.mul(new Prisma.Decimal('1000000')).toFixed(0);
+
+    const tokenAddress = USDC_ADDRESSES[wallet.chain as SupportedChain];
+
+    const result = await this.custody.transfer({
+      fromCustodyId: wallet.custodyId,
+      toAddress:     params.toAddress,
+      amountRaw,
+      chain:         wallet.chain as SupportedChain,
+      idempotencyKey: params.idempotencyKey,
+      tokenAddress,
+    });
+
+    this.logger.log(
+      `Withdrawal submitted from wallet ${walletId} (tenant: ${tenantId}): ` +
+      `${params.amountUsdc} USDC → ${params.toAddress} | ` +
+      `txHash: ${result.txHash} | status: ${result.status}`,
+    );
+
+    return {
+      txHash:       result.txHash,
+      status:       result.status,
+      custodyTxId:  result.custodyTxId ?? null,
+      fromAddress:  wallet.address,
+      toAddress:    params.toAddress,
+      amountUsdc:   params.amountUsdc,
+      chain:        wallet.chain,
+    };
   }
 }

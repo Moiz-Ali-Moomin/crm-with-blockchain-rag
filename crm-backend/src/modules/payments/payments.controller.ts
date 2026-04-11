@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto, ListPaymentsQueryDto } from './payments.dto';
+import { CreatePaymentDto, ListPaymentsQueryDto, RefundPaymentDto } from './payments.dto';
 import { PaymentStatus } from '@prisma/client';
 import { LedgerService } from '../ledger/ledger.service';
 
@@ -42,6 +42,19 @@ export class PaymentsController {
   @Get(':id')
   getById(@Param('id') id: string, @Request() req: any) {
     return this.paymentsService.findById(id, req.user.tenantId);
+  }
+
+  /**
+   * POST /payments/:id/refund — transition a COMPLETED payment to REFUNDED.
+   * Only the owning tenant can refund their own payment.
+   */
+  @Post(':id/refund')
+  refund(
+    @Param('id') id: string,
+    @Body() dto: RefundPaymentDto,
+    @Request() req: any,
+  ) {
+    return this.paymentsService.handleRefund(id, req.user.tenantId, dto.reason);
   }
 
   /** GET /payments/:id/ledger — audit trail for this payment */

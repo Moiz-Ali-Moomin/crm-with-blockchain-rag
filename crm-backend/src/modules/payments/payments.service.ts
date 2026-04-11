@@ -250,6 +250,61 @@ export class PaymentsService {
     return stale.length;
   }
 
+  // ─── Refund ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Transition a COMPLETED payment to REFUNDED.
+   * The state machine enforces that only COMPLETED payments can be refunded.
+   * Writes an immutable audit event and fires a PAYMENT_REFUNDED webhook.
+   *
+   * Note: ledger reversal entries are intentionally omitted here — the
+   * accounting team handles those manually via the audit trail.
+   */
+  async handleRefund(paymentId: string, tenantId: string, reason?: string): Promise<Payment> {
+    const payment = await this.paymentsRepo.findById(paymentId, tenantId);
+    if (!payment) throw new NotFoundException(`Payment ${paymentId} not found`);
+
+    PaymentStateMachine.assertTransition(payment.status, 'REFUNDED');
+
+    const refunded = await this.prisma.$transaction(async (tx) => {
+      const updated = await this.paymentsRepo.transition(payment.id, 'REFUNDED', {}, tx);
+
+      await this.paymentsRepo.appendEvent(
+        payment.id,
+        payment.tenantId,
+        'COMPLETED',
+        'REFUNDED',
+        'payment_refunded',
+        { reason: reason ?? 'Requested by tenant' },
+        tx,
+      );
+
+      return updated;
+    });
+
+    // Fire webhook — best-effort, outside the DB transaction
+    await this.webhookQueue
+      .add(
+        'deliver',
+        {
+          tenantId: payment.tenantId,
+          event: 'PAYMENT_REFUNDED',
+          payload: {
+            paymentId: payment.id,
+            amountUsdc: payment.amountUsdc.toString(),
+            reason: reason ?? 'Requested by tenant',
+          },
+        },
+        QUEUE_JOB_OPTIONS.webhook,
+      )
+      .catch((err) =>
+        this.logger.error(`Webhook enqueue failed for refund ${payment.id}: ${err.message}`),
+      );
+
+    this.logger.log(`Payment ${payment.id} → REFUNDED (reason: ${reason ?? 'unspecified'})`);
+    return refunded;
+  }
+
   // ─── Reads ──────────────────────────────────────────────────────────────────
 
   async findById(id: string, tenantId: string): Promise<Payment> {

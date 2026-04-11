@@ -43,6 +43,12 @@ export class CreatePaymentDto {
   metadata?: Record<string, unknown>;
 }
 
+export class RefundPaymentDto {
+  @IsString()
+  @IsOptional()
+  reason?: string;
+}
+
 export class ListPaymentsQueryDto {
   @IsEnum(['PENDING', 'CONFIRMING', 'COMPLETED', 'FAILED', 'REFUNDED', 'EXPIRED'])
   @IsOptional()

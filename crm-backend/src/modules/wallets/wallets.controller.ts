@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { WalletsService } from './wallets.service';
-import { ProvisionWalletDto } from './wallets.dto';
+import { ProvisionWalletDto, WithdrawDto } from './wallets.dto';
 
 @Controller('wallets')
 @UseGuards(JwtAuthGuard)
@@ -42,5 +42,25 @@ export class WalletsController {
       dto.chain,
       dto.label,
     );
+  }
+
+  /**
+   * POST /wallets/:id/withdraw — submit an outbound USDC transfer.
+   *
+   * The custody provider signs and broadcasts the transaction.
+   * Returns txHash and status immediately (the tx may still be pending on-chain).
+   * Use GET /wallets/:id/balance after ~30s to see the updated balance.
+   */
+  @Post(':id/withdraw')
+  withdraw(
+    @Param('id') id: string,
+    @Body() dto: WithdrawDto,
+    @Request() req: any,
+  ) {
+    return this.walletsService.withdraw(id, req.user.tenantId, {
+      toAddress:      dto.toAddress,
+      amountUsdc:     dto.amountUsdc,
+      idempotencyKey: dto.idempotencyKey,
+    });
   }
 }

@@ -8,7 +8,7 @@ import { z } from 'zod';
 const envSchema = z.object({
   // App
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.string().default('4000'),
+  PORT: z.string().default('3001'),
   API_VERSION: z.string().default('v1'),
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 
@@ -45,7 +45,7 @@ const envSchema = z.object({
 
   // App URLs
   APP_URL: z.string().default('http://localhost:3000'),
-  API_URL: z.string().default('http://localhost:4000'),
+  API_URL: z.string().default('http://localhost:3001'),
 
   // Encryption
   ENCRYPTION_KEY: z.string().min(32).optional(),

@@ -20,7 +20,7 @@ export class HealthController {
   ) {}
 
   /** Lightweight liveness probe — used by Docker healthcheck and CD pipeline */
-  @Get()
+  @Get('live')
   @Public()
   live() {
     return { status: 'ok', uptime: process.uptime() };

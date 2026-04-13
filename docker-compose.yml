@@ -80,7 +80,7 @@ services:
     volumes:
       - api_logs:/app/logs
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/v1/health/live || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/api/v1/health/live || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -129,7 +129,7 @@ services:
     networks:
       - crm_public
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/api/v1/health/live || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/api/v1/health/live || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

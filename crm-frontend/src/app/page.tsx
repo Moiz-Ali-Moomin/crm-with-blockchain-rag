@@ -442,7 +442,7 @@ function HowItWorksSection() {
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
             Most CRMs take weeks to set up and months to get value from.
-            CRM Platform is different — you'll see results on day one.
+            CRM Platform is different — you&apos;ll see results on day one.
           </p>
         </div>
 
@@ -662,7 +662,7 @@ function StatsSection() {
             Real results
           </p>
           <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-4">
-            The numbers don't lie
+            The numbers don&apos;t lie
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
             Over 2,400 sales teams use CRM Platform to manage their pipeline, hit quota,
@@ -698,10 +698,10 @@ function TestimonialsSection() {
             Customer stories
           </p>
           <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-4">
-            Don't take our word for it
+            Don&apos;t take our word for it
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
-            Here's what sales leaders say after switching to CRM Platform.
+            Here&apos;s what sales leaders say after switching to CRM Platform.
           </p>
         </div>
 
@@ -713,7 +713,7 @@ function TestimonialsSection() {
             >
               <Quote size={24} className="text-blue-100 mb-4 shrink-0" strokeWidth={2} />
               <p className="text-sm text-slate-700 leading-relaxed flex-1 mb-6">
-                "{quote}"
+                &ldquo;{quote}&rdquo;
               </p>
               <div className="flex items-center gap-3">
                 <div className={cn('w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0', color)}>
@@ -863,7 +863,7 @@ function CtaSection() {
         </div>
 
         <h2 className="text-4xl lg:text-5xl font-bold text-white mb-5 leading-tight max-w-3xl mx-auto">
-          Your pipeline isn't going to manage itself
+          Your pipeline isn&apos;t going to manage itself
         </h2>
 
         <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">

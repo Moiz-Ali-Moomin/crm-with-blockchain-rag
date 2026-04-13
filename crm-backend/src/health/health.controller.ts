@@ -19,8 +19,15 @@ export class HealthController {
     private readonly prisma: PrismaService,
   ) {}
 
-  /** Full liveness + readiness check — used by load balancers and CD pipeline */
+  /** Lightweight liveness probe — used by Docker healthcheck and CD pipeline */
   @Get()
+  @Public()
+  live() {
+    return { status: 'ok', uptime: process.uptime() };
+  }
+
+  /** Full readiness check — database, memory, disk */
+  @Get('ready')
   @Public()
   @HealthCheck()
   check() {
